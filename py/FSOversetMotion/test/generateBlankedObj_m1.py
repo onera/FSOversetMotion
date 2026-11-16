@@ -3,6 +3,7 @@ from FSDataManager import FSError, FSDataManager
 from FSCGNSConverter.FSCGNSConverter import buildMeshOps
 from FSOversetMotion.FSOversetMotion import FSOversetMotion, getClacInfo, getMeshKeys
 import Converter.PyTree as C
+import Converter.Internal as Internal
 import KCore.test as Ktest
 
 localDirIn = './INPUT/'
@@ -27,9 +28,10 @@ meshOps = buildMeshOps(meshFilename, verbose=False)
 fsmeshOrig.DoOps(meshOps) or FSError.PrintAndExit()
 
 # Initialize FSOversetMotion class for every meshKey
-blankedObj = FSOversetMotion(clac=clac, fsmesh=fsmeshOrig, meshKey=meshKey, blankingDict=blankingDict)
+blankedObj = FSOversetMotion(clac=clac, globalClac=globalClac, fsmesh=fsmeshOrig, meshKey=meshKey, blankingDict=blankingDict)
 
 # test
 t = blankedObj.pyTree
 if t is None: t = C.newPyTree(['DUMMY_%d'%meshColor])
+Internal._rmNodesByName(t, '.Solver#Param')
 Ktest.testT(t,globalClac.GetProcID())

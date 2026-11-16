@@ -35,7 +35,7 @@ fsmeshOrig.DoOps(meshOps) or FSError.PrintAndExit()
 fsmeshActive = dm.GetMesh(meshKeyActive, clac, True)
 
 # Initialize FSOversetMotion class for every meshKey
-blankedObj = FSOversetMotion(clac=clac, fsmesh=fsmeshOrig, meshKey=meshKey, blankingDict=blankingDict)
+blankedObj = FSOversetMotion(clac=clac, globalClac=globalClac, fsmesh=fsmeshOrig, meshKey=meshKey, blankingDict=blankingDict)
 
 # Update cell nature field with 0 (blanked) and 1 (active)
 blankedObj.computeBlanking(blankingMaskDict)

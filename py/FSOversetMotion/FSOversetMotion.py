@@ -48,12 +48,16 @@ __RAD2DEG__ = 180./math.pi
 
 class FSOversetMotion:
 
-    def __init__(self, clac, fsmesh, meshKey, blankingDict={}):
+    def __init__(self, clac, globalClac, fsmesh, meshKey, blankingDict={}):
         self.clac = clac
+        self.globalClac = globalClac
         self.fsmesh = fsmesh
         self.meshKey = meshKey
         self.blankingDict = blankingDict
         self.pyTree = None
+
+        # set local MPI comm
+        Cmpi.setCommunicator(clac.GetCommunicator())
 
         if meshKey in blankingDict:
             if len(blankingDict[meshKey]) > 0:
@@ -69,6 +73,9 @@ class FSOversetMotion:
         validBlankingTypes = ['center_in', 'node_in', 'cell_intersect']
         if blankingType not in validBlankingTypes:
             raise ValueError("computeBlanking: invalid blankingType (%s). Possible values are %s"%(blankingType, validBlankingTypes))
+
+        # set local MPI comm
+        Cmpi.setCommunicator(self.clac.GetCommunicator())
         
         meshKeyTarget = self.meshKey
         blankingDict = self.blankingDict
@@ -107,14 +114,16 @@ class FSOversetMotion:
 # FSOversetMotion Functions
 # ---------------------------------------------------------------------------- #
 
-# offsetDict : mandatory (can be zero) to specify if a BC defines a blanking mask or not.
-def generateBlankingMask(clac, fsmesh, meshKey, offsetDict, offsetFromBC='BCOverset', dim=3, localDir='./', check=False):
+def generateBlankingMask(clac, globalClac, fsmesh, meshKey, offsetDict, offsetFromBC='BCOverset', dim=3, pointsPerUnitLength=50., localDir='./', check=False):
     """Generate a blanking mask from a specified BC"""
     validBCNames = ['BCOverset', 'BCWall']
     if offsetFromBC not in validBCNames:
         raise ValueError("generateBlankingMask: invalid offsetFromBC (%s). Possible values are %s"%(offsetFromBC, validBCNames))
 
     tb = None
+
+    # set local MPI comm
+    Cmpi.setCommunicator(clac.GetCommunicator())
 
     # Conversion of the curvilinear mesh of the body ('standard' conversion)
     if meshKey in offsetDict:
@@ -145,6 +154,9 @@ def generateBlankingMask(clac, fsmesh, meshKey, offsetDict, offsetFromBC='BCOver
                 param = Internal.getNodeFromName1(tb, '.Solver#Param')
                 Internal.newDataArray('meshKey', parent=param, value=meshKey)
 
+    # set global MPI comm
+    Cmpi.setCommunicator(globalClac.GetCommunicator())
+    
     # Create bodies per meshKey
     tb = Cmpi.allgatherZones(tb)
     if Cmpi.master and check: C.convertPyTree2File(tb, localDir+'wall.plt')
@@ -153,7 +165,7 @@ def generateBlankingMask(clac, fsmesh, meshKey, offsetDict, offsetFromBC='BCOver
         meshKeyNode = Internal.getNodeFromName(zone, 'meshKey')
         meshKeyLocal = Internal.getValue(meshKeyNode)
         if meshKeyLocal not in bodies.keys():
-            bodies[meshKeyLocal] = zone
+            bodies[meshKeyLocal] = G.close(zone)
         else:
            bodies[meshKeyLocal] = T.join(bodies[meshKeyLocal], zone)
            bodies[meshKeyLocal] = G.close(bodies[meshKeyLocal])
@@ -169,9 +181,8 @@ def generateBlankingMask(clac, fsmesh, meshKey, offsetDict, offsetFromBC='BCOver
             xmin = BB[0]; ymin = BB[1]; zmin = BB[2]
             xmax = BB[3]; ymax = BB[4]; zmax = BB[5]
             dmax = max((xmax-xmin), (ymax-ymin), (zmax-zmin))
-            ppul = 50./dmax
-            if Cmpi.master: print('generateBlankingMask: generating offset (meshKey=%s) with ppul=%f and dmax=%f'%(meshKeyLocal, ppul, dmax))
-            blankingMaskDict[meshKeyLocal] = D.offsetSurface(blankingMaskDict[meshKeyLocal], offset=sign_offset*offsetDict[meshKeyLocal], pointsPerUnitLength=ppul, algo=0, dim=dim)[0]
+            if Cmpi.master: print('generateBlankingMask: generating offset (meshKey=%s) with ppul=%f and dmax=%f'%(meshKeyLocal, pointsPerUnitLength, dmax))
+            blankingMaskDict[meshKeyLocal] = D.offsetSurface(blankingMaskDict[meshKeyLocal], offset=sign_offset*offsetDict[meshKeyLocal], pointsPerUnitLength=pointsPerUnitLength, algo=0, dim=dim)[0]
             if Cmpi.master and check: C.convertPyTree2File(blankingMaskDict[meshKeyLocal], localDir+'offset_%s_%s.plt'%(offsetFromBC, meshKeyLocal))
             blankingMaskDict[meshKeyLocal] = C.convertArray2Tetra(blankingMaskDict[meshKeyLocal])
         else:
@@ -192,7 +203,7 @@ def extractPyTree(clac, fsmesh):
     t = C.newPyTree(['Base', z])
     return t
 
-def display(clac, fsmesh, meshKey, variables, dataset='State', it=0, displayDict={}, localDir='./', saveTree=False):
+def display(clac, globalClac, fsmesh, meshKey, variables, dataset='State', it=0, displayDict={}, localDir='./', saveTree=False):
     """Display flow solution using Cassiopee"""
     if not CPLOT_ENABLED:
         raise ImportError(
@@ -212,14 +223,17 @@ def display(clac, fsmesh, meshKey, variables, dataset='State', it=0, displayDict
     zplane = displayDict['zplane']
     posCam, posEye, dirCam, viewAngle, exportResolution = Decorator.getInfo2DMode(xlim, ylim, zplane, ppw)
 
+    # set local MPI comm
+    Cmpi.setCommunicator(clac.GetCommunicator())
+
     # conversion
     bcDict = generateBCDictFromMesh(fsmesh)
     convObj = FSCGNSConverter(clac=clac, fsmesh=fsmesh, bcDict=bcDict, datasets=['State'])
     convObj.convert2CGNS(forFFDX=True) # get NGon array
     zone = Internal.getZones(convObj.pyTree)[0]
-    Cmpi._setProc(zone, Cmpi.rank)
-    zone[0] = '%s_%d'%(meshKey, Cmpi.rank)
-    Xmpi._connectMatchNGon(zone)
+
+    # set global MPI comm
+    Cmpi.setCommunicator(globalClac.GetCommunicator())
 
     listOfMeshKeys = set(Cmpi.allgather(meshKey))
     listOfMeshKeys = sorted(listOfMeshKeys)

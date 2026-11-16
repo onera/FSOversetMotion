@@ -39,7 +39,7 @@ fsmeshOrig.DoOps(meshOps) or FSError.PrintAndExit()
 
 # Automatically generate blankingMaskDict from offsetDict
 blankingMaskDict = generateBlankingMask(
-    clac=clac, fsmesh=fsmeshOrig,
+    clac=clac, globalClac=globalClac, fsmesh=fsmeshOrig,
     offsetDict=offsetDict,
     meshKey=meshKey,
     offsetFromBC='BCWall', 
