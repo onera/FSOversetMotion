@@ -45,9 +45,13 @@ discParaDict = {
         },
     },
     "reconstruction": {
-        "face gradient augmentation": "cell-to-face",
-        "face gradient augmentation for the Jacobian matrix": "cell-to-face",
         "type": "limited linear",
+        "face gradient augmentation": {
+            "type": "cell-to-face"
+        },
+        "face gradient augmentation for the Jacobian matrix": {
+            "type": "cell-to-face"
+        },
         "gradient limiter": {
             "type": "full limiting",
         },

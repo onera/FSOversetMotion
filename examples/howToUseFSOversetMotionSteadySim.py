@@ -64,9 +64,13 @@ discParaDict = {
         },
     },
     "reconstruction": {
-        "face gradient augmentation": "cell-to-face",
-        "face gradient augmentation for the Jacobian matrix": "cell-to-face",
         "type": "limited linear",
+        "face gradient augmentation": {
+            "type": "cell-to-face"
+        },
+        "face gradient augmentation for the Jacobian matrix": {
+            "type": "cell-to-face"
+        },
         "gradient limiter": {
             "type": "full limiting",
         },
@@ -113,14 +117,14 @@ fsmeshActive = dm.GetMesh(meshKeyActive, clac, True)
 ## ====================================
 
 blankingMaskDict = generateBlankingMask(
-    clac=clac, fsmesh=fsmeshOrig,
+    clac=clac, globalClac=globalClac, fsmesh=fsmeshOrig,
     offsetDict=offsetDict,
     meshKey=meshKey,
     localDir=localDirOut,
     offsetFromBC='BCWall',
     check=False)
 
-blankingObj = FSOversetMotion(clac=clac, fsmesh=fsmeshOrig, meshKey=meshKey, blankingDict=blankingDict)
+blankingObj = FSOversetMotion(clac=clac, globalClac=globalClac, fsmesh=fsmeshOrig, meshKey=meshKey, blankingDict=blankingDict)
 # need to run it once to initialize fsmeshActive and create the local numbering
 blankingObj.computeBlanking(blankingMaskDict=blankingMaskDict)
 extractActiveSubMesh(dm, meshKeyOrig, meshKeyActive)
@@ -177,7 +181,7 @@ if displayDict is not None and CPLOT_ENABLED:
     niter = iterations.Size()
     it = iterations[niter-1]
 
-    display(globalClac, fsmeshActive, meshKey, displayDict['variables'], dataset='State', it=it, displayDict=displayDict, localDir=localDirOut, saveTree=True)
+    display(clac, globalClac, fsmeshActive, meshKey, displayDict['variables'], dataset='State', it=it, displayDict=displayDict, localDir=localDirOut, saveTree=True)
 
 # export convergence history
 dataLog.ExportDataTECPLOT(localDirOut+'monitor.dat', 'l2-norms') or FSError.PrintAndExit()

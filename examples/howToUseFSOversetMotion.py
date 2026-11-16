@@ -34,14 +34,14 @@ fsmeshActive = dm.GetMesh(meshKeyActive, clac, True)
 
 # FSOversetMotion 
 blankingMaskDict = generateBlankingMask(
-    clac=clac, fsmesh=fsmeshOrig,
+    clac=clac, globalClac=globalClac, fsmesh=fsmeshOrig,
     offsetDict=offsetDict,
     meshKey=meshKey,
     localDir=localDirOut,
     offsetFromBC='BCWall',  
     check=False)
 
-blankingObj = FSOversetMotion(clac=clac, fsmesh=fsmeshOrig, meshKey=meshKey, blankingDict=blankingDict)
+blankingObj = FSOversetMotion(clac=clac, globalClac=globalClac, fsmesh=fsmeshOrig, meshKey=meshKey, blankingDict=blankingDict)
 
 # 1-update cell nature field with 0 (blanked) and 1 (active)
 blankingObj.computeBlanking(blankingMaskDict=blankingMaskDict)
