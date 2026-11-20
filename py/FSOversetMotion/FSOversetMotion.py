@@ -62,6 +62,7 @@ class FSOversetMotion:
         if meshKey in blankingDict:
             if len(blankingDict[meshKey]) > 0:
                 self.pyTree = extractPyTree(clac=clac, fsmesh=fsmesh)
+                Internal._rmNodesFromType(self.pyTree, 'FlowSolution_t')
         self.cellNName = 'cellN' # cellN located at the nodes 
 
         self.fsVolumeCellTypes = FSIntArray(0)
